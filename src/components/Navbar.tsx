@@ -23,7 +23,6 @@ export default function Navbar() {
     { label: "Beverages", href: "/category/beverages", icon: "🥤" },
     { label: "Snacks", href: "/category/snacks", icon: "🍪" },
     { label: "Personal", href: "/category/personal-care", icon: "🧴" },
-
   ];
 
   const isActive = (href: string) =>
@@ -32,16 +31,12 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 bg-white shadow-md border-b border-gray-100">
       <div className="container mx-auto px-4 py-4 flex items-center gap-4 relative">
-        <Link
-          href="/"
-          className="text-3xl font-extrabold tracking-tight hover:scale-105 transition-transform"
-        >
-          <span className="bg-gradient-to-r from-red-500 via-purple-500 to-blue-500 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
-            Rush
-          </span>
-          <span className="bg-gradient-to-r from-blue-500 via-green-500 to-yellow-500 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient ml-1">
-            Now
-          </span>
+        <Link href="/" className="hover:scale-105 transition-transform">
+          <img
+            src="https://res.cloudinary.com/dehccrol4/image/upload/q_auto/f_auto/v1776537381/rushnow_logo_vzckwk.png"
+            alt="Rushnow"
+            className="h-16 w-auto object-contain"
+          />
         </Link>
 
         {/* Location Detector */}
@@ -82,7 +77,6 @@ export default function Navbar() {
                     Admin
                   </Link>
                 )}
-
               </div>
 
               <button
@@ -144,7 +138,7 @@ export default function Navbar() {
       <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-white">
         <nav className="container mx-auto px-4 py-3 overflow-x-auto whitespace-nowrap scrollbar-thin">
           <ul className="flex items-center gap-3">
-            {nav.map((item) => (
+            {nav.map(item => (
               <li key={item.href}>
                 <Link
                   href={item.href}

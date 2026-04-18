@@ -14,8 +14,6 @@ export const metadata: Metadata = {
   description: "Enjoy the fastest Delivery",
 };
 
-import CartSidebar from "../components/CartSidebar";
-
 export default function RootLayout({
   children,
 }: {
@@ -37,7 +35,7 @@ export default function RootLayout({
                 {children}
               </div>
               <Footer />
-              <CartSidebar />
+
               <Toast />
             </ToastProvider>
           </CartProvider>
