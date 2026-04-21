@@ -1,4 +1,5 @@
 import "./globals.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import React from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";

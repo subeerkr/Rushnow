@@ -76,42 +76,43 @@ io.on("connection", (socket) => {
 
     console.log("Order start from client", socket.id, payload);
 
-    // Immediately confirm
+    // Immediately: PACKING
     socket.emit("status", {
-      status: "Your order will be delivered soon",
-      etaMinutes: 10,
+      status: "PACKING",
+      etaMinutes: 5,
     });
 
-    // After a short processing period -> packed & agent assigned
+    // After 5s: ASSIGNING
     const t1 = setTimeout(() => {
       const agent = pickNearestAgent(customerLat, customerLng);
       socket.emit("status", {
-        status: "Order is getting packed",
-        etaMinutes: 8,
+        status: "ASSIGNING",
+        etaMinutes: 5,
       });
       if (agent) {
         socket.emit("agentAssigned", { agent });
       }
-    }, 4000);
+    }, 5000);
     timeouts.push(t1);
 
-    // Then move to out for delivery and start live tracking
+    // After another 5s: OUT_FOR_DELIVERY
     const t2 = setTimeout(() => {
       socket.emit("status", {
-        status: "Out for delivery",
-        etaMinutes: 5,
+        status: "OUT_FOR_DELIVERY",
+        etaMinutes: 2, // 2 mins total movement time
       });
 
       const agent = pickNearestAgent(customerLat, customerLng);
       if (!agent) return;
 
       const path = [];
-      const steps = 10;
+      const steps = 120; // 120 steps as requested in user logic
       for (let i = 0; i <= steps; i++) {
         const ratio = i / steps;
         path.push({
           lat: agent.lat + (customerLat - agent.lat) * ratio,
           lng: agent.lng + (customerLng - agent.lng) * ratio,
+          progress: Math.round(ratio * 100),
         });
       }
 
@@ -120,16 +121,27 @@ io.on("connection", (socket) => {
         if (step >= path.length) {
           clearInterval(locationInterval);
           locationInterval = null;
+          
           socket.emit("status", {
-            status: "Delivered",
-            etaMinutes: 0,
+            status: "ARRIVING",
+            etaMinutes: 5,
           });
+
+          // After 5s: DELIVERED
+          const t3 = setTimeout(() => {
+            socket.emit("status", {
+              status: "DELIVERED",
+              etaMinutes: 0,
+            });
+          }, 5000);
+          timeouts.push(t3);
           return;
         }
         const point = path[step++];
         socket.emit("location", point);
-      }, 2000);
-    }, 8000);
+        socket.emit("progress", { value: point.progress });
+      }, 1000); // 1 step per second
+    }, 10000);
     timeouts.push(t2);
   });
 

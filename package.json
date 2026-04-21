@@ -10,8 +10,10 @@
     "socket": "node socket-server.js"
   },
   "dependencies": {
+    "@types/mapbox-gl": "^3.4.1",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.8.0",
+    "mapbox-gl": "^3.22.0",
     "mongodb": "^7.0.0",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^2.2.1",

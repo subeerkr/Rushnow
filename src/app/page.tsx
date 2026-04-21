@@ -51,7 +51,7 @@ export default async function HomePage() {
             <div className="relative hidden lg:block">
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { icon: "🚚", label: "10 Min Delivery" },
+                  { icon: "🚚", label: "5 Min Delivery" },
                   { icon: "⭐", label: "5 Star Rated" },
                   { icon: "🛒", label: "Easy Ordering" },
                   { icon: "💳", label: "Secure Payment" },

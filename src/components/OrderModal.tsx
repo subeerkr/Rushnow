@@ -22,7 +22,7 @@ export default function OrderModal({
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [orderTime, setOrderTime] = useState<number | null>(null);
-  const [estimatedMins, setEstimatedMins] = useState(10);
+  const [estimatedMins, setEstimatedMins] = useState(5);
   const [deliveryPartner, setDeliveryPartner] = useState<DeliveryAgent | null>(
     null,
   );
@@ -34,6 +34,7 @@ export default function OrderModal({
     lat: number;
     lng: number;
   } | null>(null);
+  const [progress, setProgress] = useState(0);
 
   const socket = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -51,10 +52,11 @@ export default function OrderModal({
       setOrderPlaced(false);
       setStatus(null);
       setOrderTime(null);
-      setEstimatedMins(10);
+      setEstimatedMins(5);
       setDeliveryPartner(null);
       setCustomerCoords(null);
       setAgentPosition(null);
+      setProgress(0);
     }
   }, [open]);
 
@@ -106,14 +108,22 @@ export default function OrderModal({
       }
     };
 
+    const handleProgress = (payload: { value: number }) => {
+      if (typeof payload?.value === "number") {
+        setProgress(payload.value);
+      }
+    };
+
     socket.on("status", handleStatus);
     socket.on("agentAssigned", handleAgentAssigned);
     socket.on("location", handleLocation);
+    socket.on("progress", handleProgress);
 
     return () => {
       socket.off("status", handleStatus);
       socket.off("agentAssigned", handleAgentAssigned);
       socket.off("location", handleLocation);
+      socket.off("progress", handleProgress);
     };
   }, [open, socket]);
 
@@ -292,11 +302,25 @@ export default function OrderModal({
             <div className="space-y-6">
               {/* ETA Header */}
               <div className="text-center">
-                <p className="text-gray-600 text-sm mb-2">Arriving in</p>
+                <p className="text-gray-600 text-sm mb-2">
+                  {status === "DELIVERED" ? "Status" : "Arriving in"}
+                </p>
                 <p className="text-6xl font-bold text-purple-600">
-                  {estimatedMins} mins
+                  {status === "DELIVERED"
+                    ? "Delivered"
+                    : `${estimatedMins} mins`}
                 </p>
               </div>
+
+              {/* Progress Bar (Zepto Style) */}
+              {status !== "DELIVERED" && (
+                <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden border border-gray-200">
+                  <div
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 h-full transition-all duration-1000 ease-linear"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              )}
 
               {/* Status Card */}
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 shadow-sm border-l-4 border-purple-500">
@@ -317,8 +341,8 @@ export default function OrderModal({
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-gray-800">
-                      {status}
+                    <h3 className="text-xl font-bold text-gray-800 tracking-tight">
+                      {status?.replace(/_/g, " ")}
                     </h3>
                     <p className="text-sm text-gray-600 mt-1">
                       Order placed at{" "}
@@ -326,7 +350,7 @@ export default function OrderModal({
                         ? new Date(orderTime).toLocaleTimeString()
                         : "-"}
                     </p>
-                    {status === "Order is getting packed" && (
+                    {status === "PACKING" && (
                       <p className="text-sm text-orange-600 mt-2 font-medium">
                         ⚠️ Expecting delay due to high demand
                       </p>
@@ -336,7 +360,7 @@ export default function OrderModal({
               </div>
 
               {/* Delay Message Bubble */}
-              {status === "Order is getting packed" && (
+              {status === "PACKING" && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">💬</span>
@@ -373,8 +397,8 @@ export default function OrderModal({
                 </div>
               )}
 
-              {/* Show map when out for delivery */}
-              {status === "Out for delivery" && (
+              {/* Show map when delivery partner is assigned */}
+              {deliveryPartner && (
                 <div className="mt-4 w-full h-64">
                   <OrderMap
                     pickup={

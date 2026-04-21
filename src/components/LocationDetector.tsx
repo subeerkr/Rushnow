@@ -43,6 +43,11 @@ export default function LocationDetector({ apiUrl }: { apiUrl?: string }) {
     navigator.geolocation.getCurrentPosition(
       async position => {
         const { latitude, longitude } = position.coords;
+        // Save coords for tracking
+        localStorage.setItem(
+          "deliveryLocationCoords",
+          JSON.stringify({ lat: latitude, lng: longitude }),
+        );
         try {
           const customApi =
             apiUrl ||

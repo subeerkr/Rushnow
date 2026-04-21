@@ -1,13 +1,10 @@
 "use client";
 import React, { useEffect, useRef } from "react";
+import mapboxgl from "mapbox-gl";
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-
-declare global {
-  interface Window {
-    google?: any;
-  }
-}
+// Mapbox Token from env
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
 export interface OrderMapProps {
   pickup?: { lng: number; lat: number };
@@ -21,123 +18,84 @@ export default function OrderMap({
   livePosition,
 }: OrderMapProps) {
   const mapContainer = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<any>(null);
-  const agentMarkerRef = useRef<any>(null);
-  const dropMarkerRef = useRef<any>(null);
-
-  const loadGoogleMapsScript = () => {
-    return new Promise<void>((resolve, reject) => {
-      if (window.google?.maps) {
-        resolve();
-        return;
-      }
-
-      const existingScript = document.getElementById(
-        "google-maps-script",
-      ) as HTMLScriptElement | null;
-      if (existingScript) {
-        existingScript.addEventListener("load", () => resolve(), {
-          once: true,
-        });
-        existingScript.addEventListener("error", () => reject(), {
-          once: true,
-        });
-        return;
-      }
-
-      const script = document.createElement("script");
-      script.id = "google-maps-script";
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Failed to load Google Maps"));
-      document.head.appendChild(script);
-    });
-  };
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const agentMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const dropMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   useEffect(() => {
     if (!mapContainer.current) return;
-    if (!GOOGLE_MAPS_API_KEY) {
-      mapContainer.current.innerHTML = "Google Maps API key not configured";
+    if (!MAPBOX_TOKEN) {
+      mapContainer.current.innerHTML = "Mapbox token not configured";
       return;
     }
 
-    let mounted = true;
+    const initial = livePosition || pickup || { lng: 77.209, lat: 28.6139 };
 
-    const initializeMap = async () => {
-      try {
-        await loadGoogleMapsScript();
-        if (!mounted || !mapContainer.current || !window.google?.maps) return;
+    const map = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [initial.lng, initial.lat],
+      zoom: 13,
+      attributionControl: false,
+    });
 
-        const initial = livePosition || pickup || { lng: 77.209, lat: 28.6139 };
+    mapRef.current = map;
 
-        mapRef.current = new window.google.maps.Map(mapContainer.current, {
-          center: { lat: initial.lat, lng: initial.lng },
-          zoom: 12,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-        });
+    // Create a custom element for the delivery boy icon
+    const el = document.createElement("div");
+    el.className = "delivery-boy-marker";
+    el.style.backgroundImage = `url('https://cdn-icons-png.flaticon.com/512/2972/2972185.png')`; // Bike delivery icon
+    el.style.width = "40px";
+    el.style.height = "40px";
+    el.style.backgroundSize = "cover";
+    el.style.borderRadius = "50%";
+    el.style.border = "2px solid white";
+    el.style.boxShadow = "0 2px 10px rgba(0,0,0,0.2)";
+    el.style.backgroundColor = "#fff";
 
-        agentMarkerRef.current = new window.google.maps.Marker({
-          map: mapRef.current,
-          position: { lat: initial.lat, lng: initial.lng },
-          title: "Delivery Partner",
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: "#FF8C00",
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 2,
-          },
-        });
+    agentMarkerRef.current = new mapboxgl.Marker(el)
+      .setLngLat([initial.lng, initial.lat])
+      .addTo(map);
 
-        if (drop) {
-          dropMarkerRef.current = new window.google.maps.Marker({
-            map: mapRef.current,
-            position: { lat: drop.lat, lng: drop.lng },
-            title: "Delivery Address",
-          });
-        }
-      } catch {
-        if (mapContainer.current) {
-          mapContainer.current.innerHTML = "Unable to load Google Maps";
-        }
-      }
-    };
+    if (drop) {
+      const dropEl = document.createElement("div");
+      dropEl.className = "drop-marker";
+      dropEl.style.backgroundImage = `url('https://cdn-icons-png.flaticon.com/512/684/684908.png')`; // Home/Pin icon
+      dropEl.style.width = "32px";
+      dropEl.style.height = "32px";
+      dropEl.style.backgroundSize = "cover";
 
-    initializeMap();
-
-    return () => {
-      mounted = false;
-      agentMarkerRef.current = null;
-      dropMarkerRef.current = null;
-      mapRef.current = null;
-    };
-  }, [pickup, livePosition]);
-
-  // React to live position updates from Socket.IO
-  useEffect(() => {
-    if (!mapRef.current || !agentMarkerRef.current || !livePosition) return;
-    const next = { lat: livePosition.lat, lng: livePosition.lng };
-    agentMarkerRef.current.setPosition(next);
-    mapRef.current.panTo(next);
-  }, [livePosition]);
-
-  useEffect(() => {
-    if (!mapRef.current || !drop || !window.google?.maps) return;
-
-    if (!dropMarkerRef.current) {
-      dropMarkerRef.current = new window.google.maps.Marker({
-        map: mapRef.current,
-        title: "Delivery Address",
-      });
+      dropMarkerRef.current = new mapboxgl.Marker(dropEl)
+        .setLngLat([drop.lng, drop.lat])
+        .addTo(map);
+        
+      // Fit bounds to show both
+      const bounds = new mapboxgl.LngLatBounds()
+        .extend([initial.lng, initial.lat])
+        .extend([drop.lng, drop.lat]);
+      
+      map.fitBounds(bounds, { padding: 50, duration: 1000 });
     }
 
-    dropMarkerRef.current.setPosition({ lat: drop.lat, lng: drop.lng });
-  }, [drop]);
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
 
-  return <div ref={mapContainer} className="w-full h-full" />;
+  // React to live position updates
+  useEffect(() => {
+    if (!mapRef.current || !agentMarkerRef.current || !livePosition) return;
+    
+    agentMarkerRef.current.setLngLat([livePosition.lng, livePosition.lat]);
+    
+    // Smoothly pan map
+    mapRef.current.easeTo({
+      center: [livePosition.lng, livePosition.lat],
+      duration: 1000,
+      essential: true
+    });
+  }, [livePosition]);
+
+  return <div ref={mapContainer} className="w-full h-full rounded-xl overflow-hidden shadow-inner border border-gray-100" />;
 }
